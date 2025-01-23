@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="author" content="zgqinc" />
+        <title>Github Skyline STL Loader by ZGQ Inc.</title>
+        <meta name="description" content="domain.zgqinc.gq" />
+        <style>
+            body {
+                overflow: hidden;
+                margin: 0px;
+                background-color: #000207;
+            }
+
+            #progressBar {
+                width: 500px;
+                height: 24px;
+                position: absolute;
+                left: 50%;
+                top: 10px;
+                margin-left: -250px;
+            }
+        </style>        
+        <script type="importmap">
+            {
+                "imports": {
+                    "three": "/three.module.js"
+                }
+            }
+        </script>
+    </head>
+    <body>
+        <progress value="0" max="100" id="progressBar"></progress>
+        <script type="module">
+            import * as THREE from 'three';
+            import { OrbitControls } from '/jsm/OrbitControls.js';
+            import { STLLoader } from '/jsm/STLLoader.js';
+            import Stats from '/jsm/stats.module.js';
+
+            let container, stats;
+            let camera, scene, renderer, mesh;
+
+            init();
+            animate();
+
+            function init() {
+                container = document.createElement('div');
+                document.body.appendChild(container);
+
+                // 设置相机
+                camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 15);
+                camera.position.set(5, 2, 5); // 调整初始相机位置
+
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color('#000207'); // 背景色
+                scene.fog = new THREE.Fog('#000207', 2, 15);
+
+                // 地面
+                const plane = new THREE.Mesh(
+                    new THREE.PlaneGeometry(40, 40),
+                    new THREE.MeshPhongMaterial({ color: '#4B0B93', specular: '#BD13CE' })
+                );
+                plane.rotation.x = -Math.PI / 2;
+                plane.position.y = -0.0;
+                scene.add(plane);
+                plane.receiveShadow = true;
+
+                // 加载 STL 模型
+                const loader = new STLLoader();
+                loader.load('./ZGQ-inc-2020-25-github-skyline.stl', function (geometry) {
+                    const material = new THREE.MeshPhongMaterial({ color: '#312689', specular: '#00A0FF', shininess: 10 });
+                    geometry.center();
+                    mesh = new THREE.Mesh(geometry, material);
+                    mesh.rotation.set(-Math.PI / 2, 0, 0);
+                    mesh.position.set(0, 0.5, 0);
+                    mesh.scale.set(0.025, 0.025, 0.025);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    scene.add(mesh);
+                    progressBar.style.display = 'none';
+                },
+                (xhr) => {
+                    if (xhr.lengthComputable) {
+                        var percentComplete = (xhr.loaded / xhr.total) * 100;
+                        progressBar.value = percentComplete;
+                        progressBar.style.display = 'block';
+                    }
+                },
+                (error) => {
+                    console.log(error);
+                });
+
+                // 添加光源
+                scene.add(new THREE.HemisphereLight('#FFFFFF', '#FFFFFF', 3));
+                addShadowedLight(1, 1, 1, '#FFFFFF', 3.5);
+                addShadowedLight(0.5, 1, -1, '#FFFFFF', 3);
+
+                // 渲染器
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setPixelRatio(window.devicePixelRatio);
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.shadowMap.enabled = true;
+                container.appendChild(renderer.domElement);// 添加 FPS 统计
+                stats = new Stats();
+                container.appendChild(stats.dom);
+
+                // 窗口大小调整监听
+                window.addEventListener('resize', onWindowResize);
+            }
+
+            function addShadowedLight(x, y, z, color, intensity) {
+                const directionalLight = new THREE.DirectionalLight(color, intensity);
+                directionalLight.position.set(x, y, z);
+                directionalLight.target.position.set(0, 0, 0);
+                scene.add(directionalLight);
+                scene.add(directionalLight.target);
+
+                directionalLight.castShadow = true;
+                const shadowSize = 5;
+                directionalLight.shadow.camera.left = -shadowSize;
+                directionalLight.shadow.camera.right = shadowSize;
+                directionalLight.shadow.camera.top = shadowSize;
+                directionalLight.shadow.camera.bottom = -shadowSize;
+
+                directionalLight.shadow.camera.near = 0.5;
+                directionalLight.shadow.camera.far = 20;
+
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                directionalLight.shadow.bias = -0.001;
+            }
+
+            function onWindowResize() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+
+                if (mesh) {
+                    mesh.rotation.z += 0.0;
+                }
+
+                render();
+                stats.update();
+            }
+
+            function render() {
+                const timer = Date.now() * 0.0005;
+
+                camera.position.x = Math.cos(timer) * 5;
+                camera.position.z = Math.sin(timer) * 5;
+                camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+                renderer.render(scene, camera);
+            }
+        </script>
+    </body>
+</html>
